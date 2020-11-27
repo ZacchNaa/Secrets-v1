@@ -3,9 +3,9 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require('mongoose');
-const encrypt = require("mongoose-encryption");
 const Schema = mongoose.Schema;
-
+const md5 = require("md5")
+//level 3 authentication
 const app = express();
 
 app.set('view engine', 'ejs');
@@ -30,12 +30,7 @@ const userSchema = new Schema({
     }
 })
 
-//encryption
-const secret = process.env.SECRET
-userSchema.plugin(encrypt, {secret:secret, encryptedFields:["password"]})
-//this is all you need. the encryption is done when you 'save' a new user
-//and decryption is done when you 'find' a user
-//model
+
 const User = new mongoose.model("User", userSchema)
 
 // routing
@@ -49,7 +44,7 @@ app.route("/login")
     })
     .post(function (req, res) {
         const username = req.body.username
-        const password = req.body.password
+        const password = md5(req.body.password)
         //decryption happens here
         User.findOne({ email:username}, function (err, foundUser) {
             if (err) {
@@ -75,7 +70,7 @@ app.route("/register")
     .post(function (req, res) {
         const newUser = new User({
             email: req.body.username,
-            password:req.body.password
+            password:md5(req.body.password)
         })
 //encryption happens here
         newUser.save(function (err) {
