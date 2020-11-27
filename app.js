@@ -1,8 +1,10 @@
-require('dotenv').config(); 
+require('dotenv').config(); //must always be require first
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require('mongoose');
+const encrypt = require("mongoose-encryption");
+const Schema = mongoose.Schema;
 
 const app = express();
 
@@ -14,10 +16,10 @@ app.use(bodyParser.urlencoded({
 app.use(express.static("public"));
 
 //DB Connection
-mongoose.connect("mongodb://localhost:27017/userDB", {useNewUrlParser:true, useUnifiedTopology:true, useFindAndModify:false})
+mongoose.connect(process.env.DATABASE_URL, {useNewUrlParser:true, useUnifiedTopology:true, useFindAndModify:false})
 
 //schemas
-const userSchema = {
+const userSchema = new Schema({
     email: {
         type: String,
         required:[true, "An email is required!"]
@@ -26,8 +28,13 @@ const userSchema = {
         type: String,
         required:[true, "You would need a password too!"]
     }
-}
+})
 
+//encryption
+const secret = process.env.SECRET
+userSchema.plugin(encrypt, {secret:secret, encryptedFields:["password"]})
+//this is all you need. the encryption is done when you 'save' a new user
+//and decryption is done when you 'find' a user
 //model
 const User = new mongoose.model("User", userSchema)
 
@@ -43,6 +50,7 @@ app.route("/login")
     .post(function (req, res) {
         const username = req.body.username
         const password = req.body.password
+        //decryption happens here
         User.findOne({ email:username}, function (err, foundUser) {
             if (err) {
                 console.log(err);   
@@ -69,7 +77,7 @@ app.route("/register")
             email: req.body.username,
             password:req.body.password
         })
-
+//encryption happens here
         newUser.save(function (err) {
             if (err) {
                console.log(err);
